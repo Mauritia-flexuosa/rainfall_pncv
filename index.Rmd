@@ -1,0 +1,110 @@
+---
+title: "Methods for comparing MAP among vegetation types and Biomes"
+author: "Marcio"
+date: "7/15/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+source("./script_rainfall_clean.R")
+```
+
+
+#### Here, we investigate differences in rainfall between the Amazon biome, the Cerrado biome, and three vegetation types within the Cerrado (i.e. Savanna, Gallery Forest, and Dry Forest).
+
+### **Methods and Results**
+
+The visual inspection of the residuals distribution show that it is normaly distributed, with the mean near zero (Figure 1). 
+
+```{r, fig.cap="Figure 1: Residuals inspection.", warning=FALSE, message=FALSE}
+lm(Rainfall ~ as.factor(Biome),
+   data = data)$resid %>% hist
+```
+
+Firstly, we used the _gls_ function from the R package _nlme_ (Pinheiro et al., 2019) to fit a linear mixed-effects model. This model considered rainfall as the response variable, with the factors of interest being Biome (with two categories: Amazon and Cerrado) and Vegetation Type (with three categories: Savanna, Gallery Forest, and Dry Forest) (Table 1).
+
+```{r, fig.cap="Table 1: GLS model summary output.", warning=FALSE, message=FALSE}
+m1 <- nlme::gls(Rainfall ~ as.factor(Biome),
+    data = data,
+    weights = nlme::varIdent(form = ~ 1 | as.factor(Biome)),
+    method = "ML", na.action = na.omit) 
+
+summary(m1)$tTable
+```
+
+Next, we performed an analysis of variance (ANOVA) using the _anova_ function in R to assess the statistical significance of the main effects and the interaction between the factors.
+
+
+```{r, fig.cap="Table 2: Anova output.", warning=FALSE, message=FALSE}
+an_m <- anova(m1)
+an_m %>% data.frame
+```
+
+ANOVA revealed statistically significant results (Table 2) and we proceeded with post hoc tests to conduct multiple comparisons between groups. For this purpose, we utilized the _emmeans_ function from the package _emmeans_ (Lenth, 2022) to compute adjusted means and confidence intervals for each combination of factors (Table 3).
+
+```{r, fig.cap="Table 3: Statistics of MAP for all Biomes and vegetation types.", warning=FALSE, message=FALSE}
+means <- emmeans::emmeans(m1, specs = list("Biome"))
+means %>% data.frame
+```
+
+Subsequently, we conducted multiple comparison tests using the _contrast_ function, also from _emmeans_ package, with the argument _method = "pairwise"_. This test allowed us to identify significant differences between groups (or not) by comparing all factor levels, such as biomes and vegetation types. Adjusted p-values were considered to control the family-wise error rate.
+
+```{r, fig.cap="Table 4: Pairwise comparisons of MAP among biomes and sampled vegetation types.", warning=FALSE, message=FALSE}
+contrasts <- emmeans::contrast(means, method = "pairwise")
+
+contrasts %>%
+  data.frame %>%
+  rename(Pair = "emmeans.of.Biome.contrast") %>% 
+  rename(estimate = "emmeans.of.Biome.estimate") %>% 
+  rename(se = "emmeans.of.Biome.SE") %>% 
+  rename(df = "emmeans.of.Biome.df") %>% 
+  rename(`t ratio` = "emmeans.of.Biome.t.ratio") %>% 
+  rename(`p-vaue` = "emmeans.of.Biome.p.value") 
+  
+```
+
+
+# Conclusion
+
+We found no differences in MAP among our sampled vegetation types (Table 4). Furthermore, the MAP of our samples are not different from the MAP of both Biomes (Table 4).
+
+Most of our samples are inside the bistability zone (1300-2100mm; Ciemer et al., 2019) (Figure 2). However they are near the lower limit with some dry forests overcoming the thresshold (Figure 2).
+
+```{r, fig.cap="Figure 2: MAP distribution for Amazon and Cerrado Biomes, and for our sampled vegetation types.", warning=FALSE, message=FALSE}
+data %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
+  geom_boxplot(data = data, outlier.shape = NA, show.legend = F, aes(fill = factor(Biome)))+
+    scale_fill_manual(values = c("grey", "pink", "purple", "blue", "orange"))+
+  ylim(c(0, 4000))+
+  geom_vline(xintercept = 2.5, linetype = "dashed", size = 0.5, color = "grey")+
+  geom_hline(yintercept = c(1300,2100), linetype = "dashed", color = "red")+
+  labs(x = NULL, y = "Mean Annual Rainfall (mm)", title = NULL)+
+  geom_text(aes(x = 3.5, y = 2000, label = "Bistability zone", color = "red", size = 11, ... = "sans"), show.legend = F)+
+  geom_text(aes(x = 1.5, y = 3500, label = "Biomes", size = 11, ... = "sans"), show.legend = F)+
+  geom_text(aes(x = 4, y = 3500, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
+  geom_text(aes(x = 1, y = 3475, label = "a"))+
+  geom_text(aes(x = 2, y = 2130, label = "b"))+
+  geom_text(aes(x = 3, y = 1700, label = "b"))+
+  geom_text(aes(x = 4, y = 1700, label = "b"))+
+  geom_text(aes(x = 5, y = 1700, label = "b"))+
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 13))
+
+```
+
+This statistical approach facilitated a comprehensive and precise analysis of mean annual rainfall differences among biomes and vegetation types between and within Biomes and our sample sites.
+
+
+### REFERENCES
+
+
+Russell V. Lenth (2022). emmeans: Estimated Marginal Means, aka Least-Squares
+Means. R package version 1.7.4-1. https://CRAN.R-project.org/package=emmeans
+
+Pinheiro J, Bates D, DebRoy S, Sarkar D, R Core Team (2019). _nlme: Linear and
+Nonlinear Mixed Effects Models_. R package version 3.1-140, <URL:
+https://CRAN.R-project.org/package=nlme>.
+

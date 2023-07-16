@@ -14,41 +14,68 @@ source("./script_rainfall_clean.R")
 ```
 
 
-#### Here, we investigate differences in mean annual precipitation (MAP), Markham seasonality index (MSI) (Markham, 1970) and interannual variability (CV) between the Amazon biome, the Cerrado biome, and three vegetation types within the Cerrado (i.e. Savanna, Gallery Forest, and Dry Forest).
+#### Here, we investigate differences in mean annual precipitation (MAP), Markham seasonality index (MSI) (Markham, 1970) and interannual variability (CV) between the Amazon biome (Map 1, blue line), the Cerrado biome (Map 1, red line), and three vegetation types (black dot in the Map 1) within the Cerrado (i.e. Savanna, Gallery Forest, and Dry Forest all from the [PNCV](https://www.icmbio.gov.br/parnachapadadosveadeiros/guia-do-visitante.html)).
 
-
+### **Map 1** MAP (a), MSI (b) and CV (c) for the region of study. Red line depicts the Cerrado border, the blue line corresponds to Amazon border and the black dot is placed in the Parque Nacional da Chapada dos Veadeiros (PNCV). Monthly precipitation for South America from CHIRPS V2.0.
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 library(patchwork)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthhires)
+
+BRA <- ne_states(country = "Brazil",
+                 returnclass = "sf")
 
 df <- as.data.frame(mapChirpsAR, xy = TRUE)
 df1 <- as.data.frame(msiChirpsAR, xy = TRUE)
 df2 <- as.data.frame(cvpChirpsAR, xy = TRUE)
 
+cerrado_border_sf <- st_as_sf(cerrado_border)
+amazon_border_sf <- st_as_sf(amazon_border)
 
-(ggplot(data = df, aes(x = x, y = y, fill = layer)) +
-  geom_raster() +
+(ggplot() +
+  geom_raster(data = df, aes(x = x, y = y, fill = layer)) +
+    geom_sf(data = BRA, fill = "transparent", color = "white") +
+    geom_sf(data = cerrado_border_sf, fill = "transparent", color = "red", size = 3) +
+    geom_sf(data = amazon_border_sf, fill = "transparent", color = "blue2", size = 3) +
+    geom_point(data = coords[13,],aes(x = x, y = y))+
+    ylim(c(-20,15))+
   scale_fill_gradient(low = "grey", high = "orange") +
-  labs(fill = "MAP", title = "MAP")+
+  labs(fill = "MAP", title = "a")+
     theme(axis.title.x = element_blank(),
-          axis.text.x = element_blank()))/(ggplot(data = df1, aes(x = x, y = y, fill = layer)) +
-  geom_raster() +
+          axis.text.x = element_blank()))/(ggplot() +
+  geom_raster(data = df1, aes(x = x, y = y, fill = layer)) +
+    geom_sf(data = BRA, fill = "transparent", color = "white") +
+    geom_sf(data = cerrado_border_sf, fill = "transparent", color = "red", size = 3) +
+    geom_sf(data = amazon_border_sf, fill = "transparent", color = "blue2", size = 3) +
+    geom_point(data = coords[13,],aes(x = x, y = y))+
+    ylim(c(-20,15))+
   scale_fill_gradient(low = "grey", high = "orange") +
-  labs(fill = "MSI", title = "MSI")+
+  labs(fill = "MSI", title = "b")+
     theme(axis.title.x = element_blank(),
-          axis.text.x = element_blank()))/(ggplot(data = df2, aes(x = x, y = y, fill = layer)) +
-  geom_raster() +
+          axis.text.x = element_blank()))/(ggplot() +
+  geom_raster(data = df2, aes(x = x, y = y, fill = layer)) +
+    geom_sf(data = BRA, fill = "transparent", color = "white") +
+    geom_sf(data = cerrado_border_sf, fill = "transparent", color = "red", size = 3) +
+    geom_sf(data = amazon_border_sf, fill = "transparent", color = "blue2", size = 3) +
+    geom_point(data = coords[13,],aes(x = x, y = y))+
+    ylim(c(-20,15))+
+
   scale_fill_gradient(low = "grey", high = "orange") +
-  labs(fill = "CV", title = "CV"))
+  labs(fill = "CV", title = "c"))
 ```
 
 
 ### **Methods and Results**
 
-The visual inspection of the residuals distribution show that it is normaly distributed, with the mean near zero (Figure 1). 
+The visual inspection of the residuals distribution shows that for MAP and CV (Figure 1a,c) it is normaly distributed, with the mean near zero. For the MSI, residuals presented a tailed distribution and to deal with heterocedasticity of residuals we used the function _exp_ to transform the data (Figure 1b).
 
 ```{r, fig.cap="Figure 1: Residuals inspection.", warning=FALSE, message=FALSE}
+par(mfrow=c(1,3))
 lm(Rainfall ~ as.factor(Biome),
-   data = data)$resid %>% hist
+   data = data)$resid %>% hist(bins = 100, main = "a");lm(exp(Rainfall) ~ as.factor(Biome),
+   data = data1)$resid %>% hist(bins = 100, main = "b");lm(Rainfall ~ as.factor(Biome),
+   data = data2)$resid %>% hist(bins = 100, main = "c")
 ```
 
 Firstly, we used the _gls_ function from the R package _nlme_ (Pinheiro et al., 2019) to fit a linear mixed-effects model. This model considered rainfall as the response variable, with the factors of interest being Biome (with two categories: Amazon and Cerrado) and Vegetation Type (with three categories: Savanna, Gallery Forest, and Dry Forest) (Table 1).
@@ -112,9 +139,9 @@ data %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
   geom_text(aes(x = 4, y = 3500, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
   geom_text(aes(x = 1, y = 3475, label = "a"))+
   geom_text(aes(x = 2, y = 2130, label = "b"))+
-  geom_text(aes(x = 3, y = 1700, label = "b"))+
-  geom_text(aes(x = 4, y = 1700, label = "b"))+
-  geom_text(aes(x = 5, y = 1700, label = "b"))+
+  geom_text(aes(x = 3, y = 1700, label = "c"))+
+  geom_text(aes(x = 4, y = 1700, label = "d"))+
+  geom_text(aes(x = 5, y = 1700, label = "d"))+
   theme(axis.text = element_text(size = 11),
         axis.title = element_text(size = 13))
 
@@ -125,7 +152,7 @@ data %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
 To compare between vegetation types and Biomes regardind MSI (i.e. seasonality lenght) (Markham, 1970), we performed the same method used to test for differences in MAP (Tables 5-8).
 
 ```{r, fig.cap="Table 5: GLS model summary output with the MSI as the response variable.", warning=FALSE, message=FALSE}
-m2 <- nlme::gls(Rainfall ~ as.factor(Biome),
+m2 <- nlme::gls(exp(Rainfall) ~ as.factor(Biome),
     data = data1,
     weights = nlme::varIdent(form = ~ 1 | as.factor(Biome)),
     method = "ML", na.action = na.omit) 
@@ -140,7 +167,7 @@ an_m <- anova(m2)
 an_m %>% data.frame
 ```
 
-The range of values of MSI is very similar among groups. However, the range of MSI values for the Amazon biome clearly differs from the other groups and do not overlap with Cerrado nor with our samples (Table 7; Figure 3).
+The range of values of MSI is very similar among groups. However, the range of MSI values for the Amazon biome clearly differs from the other groups and do not overlap with Cerrado nor Cerrado with our samples (Table 7; Figure 3).
 
 ```{r, fig.cap="Table 7: Statistics of MSI for all Biomes and vegetation types.", warning=FALSE, message=FALSE}
 means <- emmeans::emmeans(m2, specs = list("Biome"))
@@ -163,7 +190,7 @@ contrasts %>%
   
 ```
 
-MSI do not differ among our sample plots, but they differ from Amazon and Cerrado Biomes (Table 8). However, the lenght of the dry season (i.e MSI) of the sampled vegetation types is in the range of values found for the Cerrado Biome (Table 8 Fig. 3), as they are located in this biome.
+MSI do not differ among our sample plots, but they differ from Amazon and Cerrado Biomes (Table 8). However, the lenght of the dry season (i.e MSI) of the sampled vegetation types is in the range of values found for the Cerrado Biome (Table 8 Fig. 3), as they are located within the biome.
 
 ```{r, fig.cap="Figure 3: MSI distribution for Amazon and Cerrado Biomes, and for our sampled vegetation types.", warning=FALSE, message=FALSE}
 data1 %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
@@ -176,9 +203,9 @@ data1 %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
   geom_text(aes(x = 4, y = 0.8, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
   geom_text(aes(x = 1, y = 0.7, label = "a"))+
   geom_text(aes(x = 2, y = 0.73, label = "b"))+
-  geom_text(aes(x = 3, y = 0.73, label = "b"))+
-  geom_text(aes(x = 4, y = 0.73, label = "b"))+
-  geom_text(aes(x = 5, y = 0.73, label = "b"))+
+  geom_text(aes(x = 3, y = 0.73, label = "c"))+
+  geom_text(aes(x = 4, y = 0.73, label = "c"))+
+  geom_text(aes(x = 5, y = 0.73, label = "c"))+
   theme(axis.text = element_text(size = 11),
         axis.title = element_text(size = 13))
 
@@ -231,7 +258,7 @@ contrasts %>%
 
 Despite diferences between gallery forests and savannas, the CV is similar among vegetation types with low variation within groups (Table 11, Figure 4). There are uncongruent results between Table 11 and Figure 4 because the lower limit of our sampled vegetation types are higher than the upper limit of the Cerrado Biome, what does not make sense.
 
-```{r, fig.cap="Figure 2: MAP distribution for Amazon and Cerrado Biomes, and for our sampled vegetation types.", warning=FALSE, message=FALSE}
+```{r, fig.cap="Figure 4: MAP distribution for Amazon and Cerrado Biomes, and for our sampled vegetation types.", warning=FALSE, message=FALSE}
 data2 %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
   geom_boxplot(data = data2, outlier.shape = NA, show.legend = F, aes(fill = factor(Biome)))+
     scale_fill_manual(values = c("grey", "pink", "purple", "blue", "orange"))+
@@ -242,9 +269,9 @@ data2 %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
   geom_text(aes(x = 4, y = 0.125, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
   geom_text(aes(x = 1, y = 0.103, label = "a"))+
   geom_text(aes(x = 2, y = 0.106, label = "b"))+
-  geom_text(aes(x = 3, y = 0.106, label = "b"))+
-  geom_text(aes(x = 4, y = 0.106, label = "b"))+
-  geom_text(aes(x = 5, y = 0.106, label = "b"))+
+  geom_text(aes(x = 3, y = 0.106, label = "c"))+
+  geom_text(aes(x = 4, y = 0.106, label = "d"))+
+  geom_text(aes(x = 5, y = 0.106, label = "d"))+
   theme(axis.text = element_text(size = 11),
         axis.title = element_text(size = 13))
 

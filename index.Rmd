@@ -1,7 +1,7 @@
 ---
 title: "Comparisons of rainfall regime among vegetation types and Biomes"
 author: "Marcio"
-date: "7/15/2023"
+date: "`r Sys.Date()`"
 output: html_document
 ---
 
@@ -14,9 +14,10 @@ source("./script_rainfall_clean.R")
 ```
 
 
-#### Here, we investigate differences in mean annual precipitation (MAP), Markham seasonality index (MSI) (Markham, 1970) and interannual variability (CV) between the Amazon biome (Map 1, blue line), the Cerrado biome (Map 1, red line), and three vegetation types (black dot in the Map 1) within the Cerrado (i.e. Savanna, Gallery Forest, and Dry Forest all from the [PNCV](https://www.icmbio.gov.br/parnachapadadosveadeiros/guia-do-visitante.html)).
+#### Here, we investigate differences in mean annual precipitation (MAP) and Markham seasonality index (MSI) (Markham, 1970) between the Amazon biome (Map 1, blue line), the Cerrado biome (Map 1, red line), the Caatinga biome (Map 1, purple line) and three vegetation types (black dot in the Map 1) within the Cerrado (i.e. Savanna, Gallery Forest, and Dry Forest all from the [PNCV](https://www.icmbio.gov.br/parnachapadadosveadeiros/guia-do-visitante.html)).
 
-### **Map 1** MAP (a), MSI (b) and CV (c) for the region of study. Red line depicts the Cerrado border, the blue line corresponds to Amazon border and the black dot is placed in the Parque Nacional da Chapada dos Veadeiros (PNCV). Monthly precipitation for South America from CHIRPS V2.0.
+ **Map 1** MAP (a) and MSI (b) for the region of study. Red line depicts the Cerrado border, the blue line corresponds to Amazon border, purple line to Caatinga border and the black dot is placed in the Parque Nacional da Chapada dos Veadeiros (PNCV). Monthly precipitation for South America from CHIRPS V2.0.
+ 
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 library(patchwork)
 library(sf)
@@ -28,15 +29,17 @@ BRA <- ne_states(country = "Brazil",
 
 df <- as.data.frame(mapChirpsAR, xy = TRUE)
 df1 <- as.data.frame(msiChirpsAR, xy = TRUE)
-df2 <- as.data.frame(cvpChirpsAR, xy = TRUE)
+#df2 <- as.data.frame(cvpChirpsAR, xy = TRUE)
 
 cerrado_border_sf <- st_as_sf(cerrado_border)
 amazon_border_sf <- st_as_sf(amazon_border)
+caatinga_border_sf <- st_as_sf(caatinga_border)
 
 (ggplot() +
   geom_raster(data = df, aes(x = x, y = y, fill = layer)) +
     geom_sf(data = BRA, fill = "transparent", color = "white") +
     geom_sf(data = cerrado_border_sf, fill = "transparent", color = "red", size = 3) +
+    geom_sf(data = caatinga_border_sf, fill = "transparent", color = "purple", size = 3) +
     geom_sf(data = amazon_border_sf, fill = "transparent", color = "blue2", size = 3) +
     geom_point(data = coords[13,],aes(x = x, y = y))+
     ylim(c(-20,15))+
@@ -46,6 +49,7 @@ amazon_border_sf <- st_as_sf(amazon_border)
           axis.text.x = element_blank()))/(ggplot() +
   geom_raster(data = df1, aes(x = x, y = y, fill = layer)) +
     geom_sf(data = BRA, fill = "transparent", color = "white") +
+        geom_sf(data = caatinga_border_sf, fill = "transparent", color = "purple", size = 3) +
     geom_sf(data = cerrado_border_sf, fill = "transparent", color = "red", size = 3) +
     geom_sf(data = amazon_border_sf, fill = "transparent", color = "blue2", size = 3) +
     geom_point(data = coords[13,],aes(x = x, y = y))+
@@ -53,32 +57,24 @@ amazon_border_sf <- st_as_sf(amazon_border)
   scale_fill_gradient(low = "grey", high = "orange") +
   labs(fill = "MSI", title = "b")+
     theme(axis.title.x = element_blank(),
-          axis.text.x = element_blank()))/(ggplot() +
-  geom_raster(data = df2, aes(x = x, y = y, fill = layer)) +
-    geom_sf(data = BRA, fill = "transparent", color = "white") +
-    geom_sf(data = cerrado_border_sf, fill = "transparent", color = "red", size = 3) +
-    geom_sf(data = amazon_border_sf, fill = "transparent", color = "blue2", size = 3) +
-    geom_point(data = coords[13,],aes(x = x, y = y))+
-    ylim(c(-20,15))+
-
-  scale_fill_gradient(low = "grey", high = "orange") +
-  labs(fill = "CV", title = "c"))
+          axis.text.x = element_blank()))
 ```
 
 
 ### **Methods and Results**
 
-The visual inspection of the residuals distribution shows that for MAP and CV (Figure 1a,c) it is normaly distributed, with the mean near zero. For the MSI, residuals presented a tailed distribution and to deal with heterocedasticity of residuals we used the function _exp_ to transform the data (Figure 1b).
+The visual inspection of the residuals distribution shows that for MAP (Figure 1a) it is normaly distributed, with the mean near zero. For the MSI, residuals presented a tailed distribution and to deal with heterocedasticity of residuals we used the function _exp_ to transform the data (Figure 1b).
 
-```{r, fig.cap="Figure 1: Residuals inspection.", warning=FALSE, message=FALSE}
-par(mfrow=c(1,3))
+```{r, echo=FALSE, fig.cap="Figure 1: Residuals inspection.", warning=FALSE, message=FALSE}
+par(mfrow=c(1,2))
 lm(Rainfall ~ as.factor(Biome),
    data = data)$resid %>% hist(bins = 100, main = "a");lm(exp(Rainfall) ~ as.factor(Biome),
-   data = data1)$resid %>% hist(bins = 100, main = "b");lm(Rainfall ~ as.factor(Biome),
-   data = data2)$resid %>% hist(bins = 100, main = "c")
+   data = data1)$resid %>% hist(bins = 100, main = "b")
 ```
 
-Firstly, we used the _gls_ function from the R package _nlme_ (Pinheiro et al., 2019) to fit a linear mixed-effects model. This model considered rainfall as the response variable, with the factors of interest being Biome (with two categories: Amazon and Cerrado) and Vegetation Type (with three categories: Savanna, Gallery Forest, and Dry Forest) (Table 1).
+## MAP
+
+Firstly, we used the _gls_ function from the R package _nlme_ (Pinheiro et al., 2019) to fit a linear mixed-effects model. This model considered MAP (and MSI) as the response variable, with the factors of interest being Biome (with two categories: Amazon, Caatinga and Cerrado) and Vegetation Type (with three categories: Savanna, Gallery Forest, and Dry Forest) (Table 1).
 
 ```{r, fig.cap="Table 1: GLS model summary output.", warning=FALSE, message=FALSE}
 m1 <- nlme::gls(Rainfall ~ as.factor(Biome),
@@ -86,25 +82,25 @@ m1 <- nlme::gls(Rainfall ~ as.factor(Biome),
     weights = nlme::varIdent(form = ~ 1 | as.factor(Biome)),
     method = "ML", na.action = na.omit) 
 
-summary(m1)$tTable
+summary(m1)$tTable %>% knitr::kable()
 ```
 
-Next, we performed an analysis of variance (ANOVA) using the _anova_ function in R to assess the statistical significance of the main effects and the interaction between the factors.
+Next, we performed an analysis of variance (ANOVA) using the _anova_ function in R to assess the statistical significance of the main effects of factors.
 
 
 ```{r, fig.cap="Table 2: Anova output.", warning=FALSE, message=FALSE}
 an_m <- anova(m1)
-an_m %>% data.frame
+an_m %>% data.frame %>% knitr::kable()
 ```
 
-ANOVA revealed statistically significant results (Table 2) and we proceeded with post hoc tests to conduct multiple comparisons between groups. For this purpose, we utilized the _emmeans_ function from the package _emmeans_ (Lenth, 2022) to compute adjusted means and confidence intervals for each combination of factors (Table 3).
+ANOVA revealed statistically significant differences (Table 2) and we proceeded with post hoc tests to conduct multiple comparisons between groups. For this purpose, we performed pairwise comparisons between factors with the _emmeans_ function from the package _emmeans_ (Lenth, 2022) to compute marginal means and confidence intervals for each combination of factors (Table 3).
 
 ```{r, fig.cap="Table 3: Statistics of MAP for all Biomes and vegetation types.", warning=FALSE, message=FALSE}
 means <- emmeans::emmeans(m1, specs = list("Biome"))
-means %>% data.frame
+means %>% data.frame %>% knitr::kable()
 ```
 
-Subsequently, we conducted multiple comparison tests using the _contrast_ function, also from _emmeans_ package, with the argument _method = "pairwise"_. This test allowed us to identify significant differences between groups (or not) by comparing all factor levels, such as biomes and vegetation types. Adjusted p-values were considered to control the family-wise error rate.
+Subsequently, we conducted multiple comparison tests using the _contrast_ function, also from _emmeans_ package, with the argument _method = "pairwise"_. This test allowed us to identify significant differences between groups (or not) by comparing all factor levels, such as biomes and vegetation types. Adjusted p-values were considered to control the family-wise error rate by Tukey method (see [contrast-methods](https://www.rdocumentation.org/packages/emmeans/versions/1.8.7/topics/summary.emmGrid) from the package emmeans).
 
 ```{r, fig.cap="Table 4: Pairwise comparisons of MAP among biomes and sampled vegetation types.", warning=FALSE, message=FALSE}
 contrasts <- emmeans::contrast(means, method = "pairwise")
@@ -116,38 +112,39 @@ contrasts %>%
   rename(se = "emmeans.of.Biome.SE") %>% 
   rename(df = "emmeans.of.Biome.df") %>% 
   rename(`t ratio` = "emmeans.of.Biome.t.ratio") %>% 
-  rename(`p-value` = "emmeans.of.Biome.p.value") 
+  rename(`p-value` = "emmeans.of.Biome.p.value")  %>% knitr::kable()
   
 ```
 
 
-
 We found differences in MAP between dry forests and both gallery forests and savannas (Table 4). Unexpectedly, the MAP of our samples are distinct from the MAP of both Biomes, including the Cerrado where they are located (Table 4).
 
-Furthermore, we found that the MAP for more than half of all dry forests samples are outside the bistability zone (1300-2100 mm), i.e. the range of MAP in which forests and savannas may occur, defined by Ciemer et al. (2019) for the neotropics (Figure 2). However they are near the lower limit. Despite the unexpected differences in dry forests MAP, most of our samples are inside the bistability zone for the neotropics (1300-2100mm; Ciemer et al., 2019) (Figure 2). Staver et al. (2011) defined a more wide range (1000-2500 mm), but using a global model. However, the Staver et al. (2011) model correctly includes dry forests in the bistability zone.
+Furthermore, we found that the MAP for more than half of all dry forests samples are outside the bistability zone (1300-2100 mm), i.e. the range of MAP in which forests and savannas may occur, defined by Ciemer et al. (2019) for the neotropics (Figure 2). However they are near the lower limit. Despite the unexpected differences in MAP for dry forests, most of our samples are inside the bistability zone for the neotropics (1300-2100mm; Ciemer et al., 2019) (Figure 2). By the other hand, Staver et al. (2011) defined a more wide range (1000-2500 mm), but using a global model. Thus, the limits defined by Staver et al. (2011) correctly includes dry forests into the bistability zone.
 
-```{r, fig.cap="Figure 2: MSI distribution for Amazon and Cerrado Biomes, and for our sampled vegetation types.", warning=FALSE, message=FALSE}
+```{r, echo = FALSE, fig.cap="Figure 2: MAP distribution for Amazon, Caatinga and Cerrado Biomes, and for our sampled vegetation types. Red lines are the bistability zone defined by Staver et al. (2011).", warning=FALSE, message=FALSE}
 data %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
   geom_boxplot(data = data, outlier.shape = NA, show.legend = F, aes(fill = factor(Biome)))+
-    scale_fill_manual(values = c("grey", "pink", "purple", "blue", "orange"))+
+    scale_fill_manual(values = c("grey", "lightblue", "pink", "purple", "blue", "orange"))+
   ylim(c(0, 4000))+
-  geom_vline(xintercept = 2.5, linetype = "dashed", size = 0.5, color = "grey")+
-  geom_hline(yintercept = c(1300,2100), linetype = "dashed", color = "red")+
+  geom_vline(xintercept = 3.5, linetype = "dashed", size = 0.5, color = "grey")+
+  geom_hline(yintercept = c(1000,2500), linetype = "dashed", color = "red")+
   labs(x = NULL, y = "Mean Annual Rainfall (mm)", title = NULL)+
-  geom_text(aes(x = 3.5, y = 2000, label = "Bistability zone", color = "red", size = 11, ... = "sans"), show.legend = F)+
-  geom_text(aes(x = 1.5, y = 3500, label = "Biomes", size = 11, ... = "sans"), show.legend = F)+
-  geom_text(aes(x = 4, y = 3500, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
-  geom_text(aes(x = 1, y = 3475, label = "a"))+
-  geom_text(aes(x = 2, y = 2130, label = "b"))+
-  geom_text(aes(x = 3, y = 1700, label = "c"))+
+  geom_text(aes(x = 4.5, y = 2300, label = "Bistability zone", color = "red", size = 11, ... = "sans"), show.legend = F)+
+  geom_text(aes(x = 2.5, y = 3500, label = "Biomes", size = 11, ... = "sans"), show.legend = F)+
+  geom_text(aes(x = 5, y = 3500, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
+  geom_text(aes(x = 1, y = 3470, label = "a"))+
+  geom_text(aes(x = 2, y = 1130, label = "b"))+
+  geom_text(aes(x = 3, y = 2130, label = "c"))+
   geom_text(aes(x = 4, y = 1700, label = "d"))+
-  geom_text(aes(x = 5, y = 1700, label = "d"))+
-  theme(axis.text = element_text(size = 11),
+  geom_text(aes(x = 5, y = 1700, label = "e"))+
+  geom_text(aes(x = 6, y = 1700, label = "e"))+
+  theme(axis.text.y = element_text(size = 11),
+        axis.text.x = element_text(size = 10),
         axis.title = element_text(size = 13))
 
 ```
 
-# Markham Seasonality Index (MSI)
+## Markham Seasonality Index (MSI)
 
 To compare between vegetation types and Biomes regardind MSI (i.e. seasonality lenght) (Markham, 1970), we performed the same method used to test for differences in MAP (Tables 5-8).
 
@@ -157,24 +154,24 @@ m2 <- nlme::gls(exp(Rainfall) ~ as.factor(Biome),
     weights = nlme::varIdent(form = ~ 1 | as.factor(Biome)),
     method = "ML", na.action = na.omit) 
 
-summary(m2)$tTable
+summary(m2)$tTable %>% knitr::kable()
 ```
 
 The ANOVA revealed significative differences among groups (Table 6).
 
 ```{r, fig.cap="Table 6: Anova output.", warning=FALSE, message=FALSE}
 an_m <- anova(m2)
-an_m %>% data.frame
+an_m %>% data.frame %>% knitr::kable()
 ```
 
-The range of values of MSI is very similar among groups. However, the range of MSI values for the Amazon biome clearly differs from the other groups and do not overlap with Cerrado nor Cerrado with our samples (Table 7; Figure 3).
+The range of values of MSI is very similar among groups. However, the range of MSI values for the Amazon biome clearly differs from the other groups and do not overlap with Cerrado and Caatinga nor with our samples (Table 7; Figure 3).
 
 ```{r, fig.cap="Table 7: Statistics of MSI for all Biomes and vegetation types.", warning=FALSE, message=FALSE}
 means <- emmeans::emmeans(m2, specs = list("Biome"))
-means %>% data.frame
+means %>% data.frame %>% knitr::kable()
 ```
 
-The comparisons among groups showed differences between biomes and between biomes and all sampled vegetation types (Table 8).
+The comparisons among groups showed differences between biomes and between biomes and all sampled vegetation types (Table 8). Dry forests, gallery forests and savannas at the PNCV do not differ in terms of length of dry season.
 
 ```{r, fig.cap="Table 8: Pairwise comparisons of MSI among biomes and sampled vegetation types.", warning=FALSE, message=FALSE}
 contrasts <- emmeans::contrast(means, method = "pairwise")
@@ -186,100 +183,37 @@ contrasts %>%
   rename(se = "emmeans.of.Biome.SE") %>% 
   rename(df = "emmeans.of.Biome.df") %>% 
   rename(`t ratio` = "emmeans.of.Biome.t.ratio") %>% 
-  rename(`p-value` = "emmeans.of.Biome.p.value") 
+  rename(`p-value` = "emmeans.of.Biome.p.value")  %>% knitr::kable()
   
 ```
 
-MSI do not differ among our sample plots, but they differ from Amazon and Cerrado Biomes (Table 8). However, the lenght of the dry season (i.e MSI) of the sampled vegetation types is in the range of values found for the Cerrado Biome (Table 8 Fig. 3), as they are located within the biome.
+MSI do not differ among our sample plots, but they differ biomes (Table 8). However, the lenght of the dry season (i.e MSI) of the sampled vegetation types is in the range of values found for the Cerrado Biome (Table 8; Fig. 3), as they are located within the biome.
 
-```{r, fig.cap="Figure 3: MSI distribution for Amazon and Cerrado Biomes, and for our sampled vegetation types.", warning=FALSE, message=FALSE}
+```{r, echo=FALSE, fig.cap="Figure 3: MSI distribution for Amazon, Caatinga and Cerrado Biomes, and for our sampled vegetation types.", warning=FALSE, message=FALSE}
 data1 %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
   geom_boxplot(data = data1, outlier.shape = NA, show.legend = F, aes(fill = factor(Biome)))+
-    scale_fill_manual(values = c("grey", "pink", "purple", "blue", "orange"))+
+    scale_fill_manual(values = c("grey", "lightblue", "pink", "purple", "blue", "orange"))+
   ylim(c(0, 0.9))+
-  geom_vline(xintercept = 2.5, linetype = "dashed", size = 0.5, color = "grey")+
+  geom_vline(xintercept = 3.5, linetype = "dashed", size = 0.5, color = "grey")+
   labs(x = NULL, y = "Markham Seasonality Index (MSI)", title = NULL)+
-  geom_text(aes(x = 1.5, y = 0.8, label = "Biomes", size = 11, ... = "sans"), show.legend = F)+
-  geom_text(aes(x = 4, y = 0.8, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
+  geom_text(aes(x = 2.5, y = 0.8, label = "Biomes", size = 11, ... = "sans"), show.legend = F)+
+  geom_text(aes(x = 5, y = 0.8, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
   geom_text(aes(x = 1, y = 0.7, label = "a"))+
-  geom_text(aes(x = 2, y = 0.73, label = "b"))+
+  geom_text(aes(x = 2, y = 0.83, label = "b"))+
   geom_text(aes(x = 3, y = 0.73, label = "c"))+
-  geom_text(aes(x = 4, y = 0.73, label = "c"))+
-  geom_text(aes(x = 5, y = 0.73, label = "c"))+
-  theme(axis.text = element_text(size = 11),
+  geom_text(aes(x = 4, y = 0.7, label = "d"))+
+  geom_text(aes(x = 5, y = 0.7, label = "d"))+
+  geom_text(aes(x = 6, y = 0.7, label = "d"))+
+  theme(axis.text.x = element_text(size = 10),
+        axis.text.y = element_text(size = 12),
         axis.title = element_text(size = 13))
 
 ```
 
-# Interannual variability
-
-We calculated the interannual variability using the coefficient of variation of annual precipitation (CV).
-
-The differences between biomes and among vegetation types were tested with the method used for MAP and MSI.
-
-```{r, fig.cap="Table 9: GLS model summary output with the CV as the response variable.", warning=FALSE, message=FALSE}
-m3 <- nlme::gls(Rainfall ~ as.factor(Biome),
-    data = data2,
-    weights = nlme::varIdent(form = ~ 1 | as.factor(Biome)),
-    method = "ML", na.action = na.omit) 
-
-summary(m3)$tTable
-```
-
-The ANOVA revealed significative differences among groups (Table 10).
-
-```{r, fig.cap="Table 10: Anova output.", warning=FALSE, message=FALSE}
-an_m <- anova(m3)
-an_m %>% data.frame
-```
-
-The range of values of CV is very similar among the sampled vegetation types, with the exception of dry forests. We also found differences among vegetation types and Cerrado biome, with our samples being outside the upper limit of Cerrado (Table 11). The range of CV values for the Amazon biome also differs from the other groups in relation to CV and do not overlap with Cerrado nor with our samples (Table 11; Figure 4).
-
-```{r, fig.cap="Table 11: Statistics of MSI for all Biomes and vegetation types.", warning=FALSE, message=FALSE}
-means <- emmeans::emmeans(m3, specs = list("Biome"))
-means %>% data.frame
-```
-
-The comparisons among groups showed differences between dry forests and both gallery forests and savannas, but gallery forests and savannas do not differ in CV. Biomes showed significant differences in CV and also differed for our sample plots (Table 12).
-
-```{r, fig.cap="Table 12: Pairwise comparisons of MSI among biomes and sampled vegetation types.", warning=FALSE, message=FALSE}
-contrasts <- emmeans::contrast(means, method = "pairwise")
-
-contrasts %>%
-  data.frame %>%
-  rename(Pair = "emmeans.of.Biome.contrast") %>% 
-  rename(estimate = "emmeans.of.Biome.estimate") %>% 
-  rename(se = "emmeans.of.Biome.SE") %>% 
-  rename(df = "emmeans.of.Biome.df") %>% 
-  rename(`t ratio` = "emmeans.of.Biome.t.ratio") %>% 
-  rename(`p-value` = "emmeans.of.Biome.p.value") 
-  
-```
-
-Despite diferences between gallery forests and savannas, the CV is similar among vegetation types with low variation within groups (Table 11, Figure 4). There are uncongruent results between Table 11 and Figure 4 because the lower limit of our sampled vegetation types are higher than the upper limit of the Cerrado Biome, what does not make sense.
-
-```{r, fig.cap="Figure 4: MAP distribution for Amazon and Cerrado Biomes, and for our sampled vegetation types.", warning=FALSE, message=FALSE}
-data2 %>% ggplot(aes(x = factor(Biome), y = Rainfall))+
-  geom_boxplot(data = data2, outlier.shape = NA, show.legend = F, aes(fill = factor(Biome)))+
-    scale_fill_manual(values = c("grey", "pink", "purple", "blue", "orange"))+
-  ylim(c(0, 0.13))+
-  geom_vline(xintercept = 2.5, linetype = "dashed", size = 0.5, color = "grey")+
-  labs(x = NULL, y = "Coefficient of variation", title = NULL)+
-  geom_text(aes(x = 1.5, y = 0.125, label = "Biomes", size = 11, ... = "sans"), show.legend = F)+
-  geom_text(aes(x = 4, y = 0.125, label = "Our samples", size = 11, ... = "sans"), show.legend = F)+
-  geom_text(aes(x = 1, y = 0.103, label = "a"))+
-  geom_text(aes(x = 2, y = 0.106, label = "b"))+
-  geom_text(aes(x = 3, y = 0.106, label = "c"))+
-  geom_text(aes(x = 4, y = 0.106, label = "d"))+
-  geom_text(aes(x = 5, y = 0.106, label = "d"))+
-  theme(axis.text = element_text(size = 11),
-        axis.title = element_text(size = 13))
-
-```
 
 # Conclusion 
 
-Despite differences showed in the analysis of MAP, MSI and CV for our sampled vegetation types, the values are very close and vegetation types are inside the bistability zone for MAP defined by Staver et al. (2011).
+Gallery forests and savannas do not differ in MAP, but dry forests differ from them. Despite differences showed in the analysis of MAP for dry forests, the values are very close compared with the range of values for the Cerrado biome. Furthermore, all vegetation types are inside the bistability zone for MAP defined by Staver et al. (2011). Vegetation types do not differ in dry season length.
 
 
 ### REFERENCES
@@ -290,9 +224,9 @@ Markham, C. G. (1970). Seasonality of precipitation in the United States. Annals
 
 Pinheiro J, Bates D, DebRoy S, Sarkar D, R Core Team (2019). _nlme: Linear and
 Nonlinear Mixed Effects Models_. R package version 3.1-140, <URL:
-https://CRAN.R-project.org/package=nlme>.
+https://CRAN.R-project.org/package=nlme>
 
-Russell V. Lenth (2022). emmeans: Estimated Marginal Means, aka Least-Squares
+Lenth, R.V. (2022). emmeans: Estimated Marginal Means, aka Least-Squares
 Means. R package version 1.7.4-1. https://CRAN.R-project.org/package=emmeans
 
 Staver, A. C., Archibald, S., & Levin, S. A. (2011). The global extent and determinants of savanna and forest as alternative biome states. Science, 230–232(334). https://doi.org/10.1126/science.1210465 
